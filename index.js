@@ -42,9 +42,34 @@ bot.onText(/\/indicadores/, async (msg) => {
     try {
         console.log('Calling fetchIndicators()...');
         const data = await fetchIndicators();
-        console.log('Data fetched successfully:', JSON.stringify(data));
+        // Fetch history to compare
+        const history = await getIndicatorsHistory();
 
-        const message = `
+        let alerts = '';
+        const threshold = 1.5; // 1.5%
+
+        const checkVolatility = (name, current, historyData) => {
+            if (current && current !== 'N/A' && historyData && historyData.length > 0) {
+                const last = historyData[historyData.length - 1];
+                if (last && last.value) {
+                    const prev = parseFloat(last.value);
+                    const curr = parseFloat(current);
+                    if (!isNaN(prev) && !isNaN(curr) && prev !== 0) {
+                        const change = ((curr - prev) / prev) * 100;
+                        if (Math.abs(change) >= threshold) {
+                            return `\n⚠️ *${name}* varió un *${change.toFixed(2)}%* (Anterior: ${prev})`;
+                        }
+                    }
+                }
+            }
+            return '';
+        };
+
+        alerts += checkVolatility('TC', data.TC, history.TC);
+        alerts += checkVolatility('Euro', data.EURO, history.EURO);
+        alerts += checkVolatility('Mezcla', data.MEZCLA, history.MEZCLA);
+
+        const message = `${alerts ? `🚨 *ALERTAS DE VOLATILIDAD:*${alerts}\n\n` : ''}
 📊 *Indicadores Financieros (Banxico)* 🇲🇽
 
 💵 *TC (Fix):* ${data.TC || 'No disponible'}
