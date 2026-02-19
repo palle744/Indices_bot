@@ -28,6 +28,7 @@ bot.onText(/\/start/, (msg) => {
 Estos son los comandos disponibles:
 ✅ */start* - Muestra este mensaje de ayuda.
 📊 */indicadores* - Muestra los indicadores financieros actuales (TC, TIIE, Cetes, INPC, Mezcla) y permite generar gráficas.
+
 ⚠️ *Nota:* Se mostrará una alerta si algún indicador varía más del *1.5%* respecto al día anterior.
     `;
     bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
