@@ -10,9 +10,24 @@ const URLS = {
 const IDS = {
     TC: 'SF43718', // Correct ID for Dollar FIX
     TIIE: 'SF331451',
-    CETES: 'CA0_DATO', // Note: This ID might change or require different selector logic
+    CETES: 'CA0_DATO',
     INPC: 'SP30578'
 };
+
+/* Helper to find a date (DD/MM/YYYY) in a string text */
+function extractDate(text) {
+    if (!text) return '';
+    // Look for DD/MM/YYYY
+    const dates = text.match(/(\d{2}\/\d{2}\/\d{4})/g);
+    if (dates && dates.length > 0) {
+        // Return the last found date as it is usually the most relevant "Fecha de determinación" or similar at bottom
+        // Or the first one? Let's try to find one near the value?
+        // Usually Banxico puts date in a header or next to value.
+        // Let's return the first one found in the text dump.
+        return dates[0];
+    }
+    return '';
+}
 
 async function fetchHtml(url) {
     try {
@@ -30,11 +45,12 @@ async function fetchHtml(url) {
 
 async function fetchIndicators() {
     const results = {
-        TC: null,
-        TIIE: null,
-        CETES: null,
-        INPC: null,
-        MEZCLA: { value: 'N/A', date: '' } // Not found on Banxico
+        TC: { value: 'N/A', date: '' },
+        TIIE: { value: 'N/A', date: '' },
+        CETES: { value: 'N/A', date: '' },
+        INPC: { value: 'N/A', date: '' },
+        MEZCLA: { value: 'N/A', date: '' },
+        EURO: { value: 'N/A', date: '' }
     };
 
     // 1. Fetch Tipos de Cambio
@@ -42,22 +58,37 @@ async function fetchIndicators() {
     if ($tipos) {
         let tcVal = $tipos(`#dato${IDS.TC}`).text().trim();
         if (!tcVal) tcVal = $tipos(`div#dato${IDS.TC}`).text().trim();
-        if (!tcVal) tcVal = $tipos(`#td${IDS.TC}`).text().trim(); // Fallback for 'td' prefix
+        if (!tcVal) tcVal = $tipos(`#td${IDS.TC}`).text().trim();
         if (!tcVal) tcVal = $tipos(`div#td${IDS.TC}`).text().trim();
-        results.TC = tcVal;
+
+        // Extract date from the whole body text
+        const pageText = $tipos('body').text();
+        const date = extractDate(pageText);
+
+        if (tcVal) results.TC = { value: tcVal, date };
     }
 
     // 2. Fetch Tasas
     const $tasas = await fetchHtml(URLS.tasas);
     if ($tasas) {
-        results.TIIE = $tasas(`#td${IDS.TIIE}`).text().trim() || $tasas(`div#td${IDS.TIIE}`).text().trim();
-        results.CETES = $tasas(`#${IDS.CETES}`).text().trim() || $tasas(`div#${IDS.CETES}`).text().trim();
+        const tiieVal = $tasas(`#td${IDS.TIIE}`).text().trim() || $tasas(`div#td${IDS.TIIE}`).text().trim();
+        const cetesVal = $tasas(`#${IDS.CETES}`).text().trim() || $tasas(`div#${IDS.CETES}`).text().trim();
+
+        const pageText = $tasas('body').text();
+        const date = extractDate(pageText);
+
+        if (tiieVal) results.TIIE = { value: tiieVal, date };
+        if (cetesVal) results.CETES = { value: cetesVal, date };
     }
 
     // 3. Fetch Inflacion
     const $inflacion = await fetchHtml(URLS.inflacion);
     if ($inflacion) {
-        results.INPC = $inflacion(`#td${IDS.INPC}`).text().trim() || $inflacion(`div#td${IDS.INPC}`).text().trim();
+        const inpcVal = $inflacion(`#td${IDS.INPC}`).text().trim() || $inflacion(`div#td${IDS.INPC}`).text().trim();
+        const pageText = $inflacion('body').text();
+        const date = extractDate(pageText);
+
+        if (inpcVal) results.INPC = { value: inpcVal, date };
     }
 
     // 4. Fetch Mezcla Mexicana (Banxico JSON)
@@ -76,7 +107,7 @@ async function fetchIndicators() {
                 const point = series[i];
                 const val = point[1];
                 if (val !== -989898 && val !== null && val !== 'N/E') {
-                    results.MEZCLA = { value: val, date: point[0] }; // Store value and date
+                    results.MEZCLA = { value: val, date: point[0] };
                     break;
                 }
             }
@@ -95,7 +126,6 @@ async function fetchIndicators() {
         const data = response.data;
         if (data && data.valores && data.valores.length > 0) {
             const series = data.valores;
-            // Get last valid value
             for (let i = series.length - 1; i >= 0; i--) {
                 const point = series[i];
                 const val = point[1];
@@ -107,13 +137,16 @@ async function fetchIndicators() {
         }
     } catch (e) {
         console.error('Error fetching Euro:', e.message);
-        results.EURO = { value: 'N/A', date: '' };
     }
 
     // 6. Calculate Euro/USD
-    if (results.TC && results.EURO && results.TC !== 'N/A' && results.EURO.value !== 'N/A') {
-        const tcVal = parseFloat(results.TC);
-        const euroVal = parseFloat(results.EURO.value);
+    // Handle both object and value cases for robustness
+    const tc = typeof results.TC === 'object' ? results.TC.value : results.TC;
+    const euro = typeof results.EURO === 'object' ? results.EURO.value : results.EURO;
+
+    if (tc && euro && tc !== 'N/A' && euro !== 'N/A') {
+        const tcVal = parseFloat(tc);
+        const euroVal = parseFloat(euro);
         if (!isNaN(tcVal) && !isNaN(euroVal) && tcVal !== 0) {
             results.EURO_USD = (euroVal / tcVal).toFixed(4);
         } else {
