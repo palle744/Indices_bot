@@ -43,6 +43,13 @@ async function fetchHtml(url) {
     }
 }
 
+/* Helper to format YYYY-MM-DD to DD/MM/YYYY */
+function formatDate(isoDate) {
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-');
+    return `${day}/${month}/${year}`;
+}
+
 async function fetchIndicators() {
     const results = {
         TC: { value: 'N/A', date: '' },
@@ -107,7 +114,7 @@ async function fetchIndicators() {
                 const point = series[i];
                 const val = point[1];
                 if (val !== -989898 && val !== null && val !== 'N/E') {
-                    results.MEZCLA = { value: val, date: point[0] };
+                    results.MEZCLA = { value: val, date: formatDate(point[0]) };
                     break;
                 }
             }
@@ -130,7 +137,7 @@ async function fetchIndicators() {
                 const point = series[i];
                 const val = point[1];
                 if (val !== -989898 && val !== null && val !== 'N/E') {
-                    results.EURO = { value: val, date: point[0] };
+                    results.EURO = { value: val, date: formatDate(point[0]) };
                     break;
                 }
             }
