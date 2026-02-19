@@ -51,13 +51,14 @@ bot.onText(/\/indicadores/, async (msg) => {
         const threshold = 1.5; // 1.5%
 
         const checkVolatility = (name, current, historyData) => {
-            if (current && current !== 'N/A' && historyData && historyData.length > 0) {
+            const currentVal = (typeof current === 'object' && current !== null) ? parseFloat(current.value) : parseFloat(current);
+
+            if (!isNaN(currentVal) && historyData && historyData.length > 0) {
                 const last = historyData[historyData.length - 1];
                 if (last && last.value) {
                     const prev = parseFloat(last.value);
-                    const curr = parseFloat(current);
-                    if (!isNaN(prev) && !isNaN(curr) && prev !== 0) {
-                        const change = ((curr - prev) / prev) * 100;
+                    if (!isNaN(prev) && prev !== 0) {
+                        const change = ((currentVal - prev) / prev) * 100;
                         if (Math.abs(change) >= threshold) {
                             return `\n⚠️ *${name}* varió un *${change.toFixed(2)}%* (Anterior: ${prev})`;
                         }
@@ -67,6 +68,13 @@ bot.onText(/\/indicadores/, async (msg) => {
             return '';
         };
 
+        const formatVal = (item) => {
+            if (typeof item === 'object' && item !== null) {
+                return `${item.value} (${item.date})`;
+            }
+            return item || 'No disponible';
+        };
+
         alerts += checkVolatility('TC', data.TC, history.TC);
         alerts += checkVolatility('Euro', data.EURO, history.EURO);
         alerts += checkVolatility('Mezcla', data.MEZCLA, history.MEZCLA);
@@ -74,13 +82,13 @@ bot.onText(/\/indicadores/, async (msg) => {
         const message = `${alerts ? `🚨 *ALERTAS DE VOLATILIDAD:*${alerts}\n\n` : ''}
 📊 *Indicadores Financieros (Banxico)* 🇲🇽
 
-💵 *TC (Fix):* ${data.TC || 'No disponible'}
-💶 *Euro:* ${data.EURO || 'No disponible'}
+💵 *TC (Fix):* ${formatVal(data.TC)}
+💶 *Euro:* ${formatVal(data.EURO)}
 💱 *Euro/USD:* ${data.EURO_USD || 'No disponible'}
-🏦 *TIIE (28 días):* ${data.TIIE || 'No disponible'}
-📈 *Cetes (28 días):* ${data.CETES || 'No disponible'}
-🛒 *INPC:* ${data.INPC || 'No disponible'}
-🛢️ *Mezcla Mexicana:* ${data.MEZCLA}
+🏦 *TIIE (28 días):* ${formatVal(data.TIIE)}
+📈 *Cetes (28 días):* ${formatVal(data.CETES)}
+🛒 *INPC:* ${formatVal(data.INPC)}
+🛢️ *Mezcla Mexicana:* ${formatVal(data.MEZCLA)}
 
 _Datos obtenidos del sitio oficial de Banxico._
         `;

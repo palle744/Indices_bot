@@ -34,7 +34,7 @@ async function fetchIndicators() {
         TIIE: null,
         CETES: null,
         INPC: null,
-        MEZCLA: 'N/A' // Not found on Banxico
+        MEZCLA: { value: 'N/A', date: '' } // Not found on Banxico
     };
 
     // 1. Fetch Tipos de Cambio
@@ -76,7 +76,7 @@ async function fetchIndicators() {
                 const point = series[i];
                 const val = point[1];
                 if (val !== -989898 && val !== null && val !== 'N/E') {
-                    results.MEZCLA = val; // Store the price
+                    results.MEZCLA = { value: val, date: point[0] }; // Store value and date
                     break;
                 }
             }
@@ -100,20 +100,20 @@ async function fetchIndicators() {
                 const point = series[i];
                 const val = point[1];
                 if (val !== -989898 && val !== null && val !== 'N/E') {
-                    results.EURO = val;
+                    results.EURO = { value: val, date: point[0] };
                     break;
                 }
             }
         }
     } catch (e) {
         console.error('Error fetching Euro:', e.message);
-        results.EURO = 'N/A';
+        results.EURO = { value: 'N/A', date: '' };
     }
 
     // 6. Calculate Euro/USD
-    if (results.TC && results.EURO && results.TC !== 'N/A' && results.EURO !== 'N/A') {
+    if (results.TC && results.EURO && results.TC !== 'N/A' && results.EURO.value !== 'N/A') {
         const tcVal = parseFloat(results.TC);
-        const euroVal = parseFloat(results.EURO);
+        const euroVal = parseFloat(results.EURO.value);
         if (!isNaN(tcVal) && !isNaN(euroVal) && tcVal !== 0) {
             results.EURO_USD = (euroVal / tcVal).toFixed(4);
         } else {
