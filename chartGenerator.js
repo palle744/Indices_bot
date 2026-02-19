@@ -16,9 +16,15 @@ async function generateChart(historyData, filterKey = null) {
     // However, chart.js handles labels well. We need a common set of labels (dates).
 
     // Collect all unique dates and sort them
+    // Collect all unique dates relevant to the processed keys
     const allDates = new Set();
-    Object.values(historyData).forEach(series => {
-        series.forEach(point => allDates.add(point.date));
+    const keysToProcess = filterKey ? [filterKey] : Object.keys(historyData);
+
+    keysToProcess.forEach(key => {
+        const series = historyData[key];
+        if (series) {
+            series.forEach(point => allDates.add(point.date));
+        }
     });
     const labels = Array.from(allDates).sort();
 
@@ -34,7 +40,7 @@ async function generateChart(historyData, filterKey = null) {
         EURO_USD: 'rgba(255, 99, 132, 1)' // Reuse or new color? Let's use a new one or reuse.
     };
 
-    const keysToProcess = filterKey ? [filterKey] : Object.keys(historyData);
+
 
     for (const key of keysToProcess) {
         const data = historyData[key];
